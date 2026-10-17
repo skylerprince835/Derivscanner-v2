@@ -1,0 +1,103 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>derivscanner.ke - V75 Pro</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:#000;color:#fff;font-family:Arial;padding:10px}
+.box{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}
+.btn{background:#00ff88;color:#000;font-weight:bold;padding:14px;border:none;border-radius:10px;width:100%;font-size:16px}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#1a1a1a;color:#fff;margin:5px 0}
+.live{color:#00ff88;font-size:12px;float:right}
+</style>
+</head>
+<body>
+
+<div class="box" style="text-align:center;border-color:#00ff88">
+<h1 style="color:#00ff88">derivscanner.ke</h1>
+<p style="color:#888;font-size:13px">V75 COLD ANALYZER - Weekly 5000 KES</p>
+<input id="code" placeholder="Enter code: 1234 for test">
+<button class="btn" onclick="unlock()">UNLOCK ACCESS</button>
+</div>
+
+<div id="app" style="display:none">
+<div class="box">
+<span style="color:#00ff88;font-weight:bold">derivscanner.ke</span>
+<span id="status" class="live">● CONNECTING...</span>
+<div id="price" style="margin-top:8px">Loading R_75...</div>
+</div>
+
+<div class="box" style="text-align:center;border:2px solid #00ff88">
+<div id="signal" style="font-size:32px;font-weight:bold">WAIT 100 TICKS</div>
+<div id="info" style="color:#aaa;font-size:12px;margin-top:5px"></div>
+</div>
+
+<div class="box">
+<div style="color:#888;font-size:11px">DIGIT FREQUENCY (Last 100 ticks)</div>
+<div id="bars" style="margin-top:10px;font-family:monospace;font-size:13px"></div>
+<div id="coldhot" style="margin-top:10px;display:flex;gap:8px">
+<div style="flex:1;background:#002a11;padding:8px;border-radius:8px;text-align:center"><small>COLDEST</small><div id="cold" style="color:#00ff88;font-weight:bold;font-size:16px">-</div></div>
+<div style="flex:1;background:#2a0000;padding:8px;border-radius:8px;text-align:center"><small>HOTTEST</small><div id="hot" style="color:#ff4444;font-weight:bold;font-size:16px">-</div></div>
+</div>
+</div>
+
+<div class="box">
+<small style="color:#666">LAST 80 TICKS</small>
+<div id="dots" style="margin-top:8px;word-break:break-all;line-height:28px"></div>
+</div>
+</div>
+
+<script>
+let digits=[];
+let ws=null;
+
+function unlock(){
+let c=document.getElementById('code').value;
+if(c.length<2){alert('Enter 1234 for test');return;}
+document.getElementById('app').style.display='block';
+connect();
+}
+
+function connect(){
+if(ws) try{ws.close()}catch(e){}
+ws=new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
+ws.onopen=()=>{
+document.getElementById('status').textContent='● LIVE First Server';
+ws.send(JSON.stringify({ticks:'R_75',subscribe:1}));
+};
+ws.onmessage=(e)=>{
+let m=JSON.parse(e.data);
+if(!m.tick) return;
+let q=m.tick.quote;
+let last=String(q).slice(-1);
+let d=parseInt(last);
+if(isNaN(d)) return;
+digits.push(d);
+if(digits.length>100) digits.shift();
+
+// FIXED: 10 ZEROS - NO BUG!
+let cnt=[0,0,0,0,0,0];
+digits.forEach(v=>{if(v>=0&&v<=9) cnt[v]++;});
+
+let min=Math.min(...cnt);
+let max=Math.max(...cnt);
+let cold=cnt.indexOf(min);
+let hot=cnt.indexOf(max);
+
+document.getElementById('price').innerHTML='R_75: <b style=color:#00ff88>'+q+'</b> | Digit: '+d+' | '+digits.length+'/100';
+document.getElementById('signal').textContent=min<=2?'🔥 BUY '+cold+' COLD':'WAIT Min '+min;
+document.getElementById('info').textContent='Cold '+cold+' ('+min+'x) | Hot '+hot+' ('+max+'x) | Conf '+(10-min)*12+'%';
+document.getElementById('bars').innerHTML=cnt.map((v,i)=>`<div style="display:flex;align-items:center;margin:3px 0"><span style="width:20px">${i}</span><div style="flex:1;background:#222;height:12px;border-radius:4px;overflow:hidden"><div style="width:${v/Math.max(...cnt,1)*100}%;height:100%;background:${v==min?'#00ff88':v==max?'#ff4444':'#444'}"></div></div><span style="width:30px;text-align:right;margin-left:8px">${v}</span></div>`).join('');
+document.getElementById('cold').textContent=cold+' ('+min+')';
+document.getElementById('hot').textContent=hot+' ('+max+')';
+document.getElementById('dots').innerHTML=digits.slice(-80).map(x=>`<span style="display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;margin:2px;font-size:11px;background:${x==cold?'#00ff88':x==hot?'#ff3333':'#222'};color:${x==cold?'#000':'#fff'}">${x}</span>`).join('');
+};
+ws.onclose=()=>{document.getElementById('status').textContent='● RECONNECTING...';setTimeout(connect,1000);};
+ws.onerror=()=>{try{ws.close()}catch(e){}};
+}
+</script>
+</body>
+  </html>
