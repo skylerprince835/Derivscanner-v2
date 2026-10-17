@@ -79,7 +79,7 @@ digits.push(d);
 if(digits.length>100) digits.shift();
 
 // FIXED: 10 ZEROS - NO BUG!
-let cnt=[0,0,0,0,0,0];
+let cnt=[0,0,0,0,0,0,0,0,0,0];
 digits.forEach(v=>{if(v>=0&&v<=9) cnt[v]++;});
 
 let min=Math.min(...cnt);
@@ -101,3 +101,4 @@ ws.onerror=()=>{try{ws.close()}catch(e){}};
 </script>
 </body>
   </html>
+  
