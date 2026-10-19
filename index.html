@@ -58,12 +58,16 @@ function connect(){
       document.getElementById('pr').innerHTML=market+': <b style=color:#00ff88>'+m.tick.quote+'</b> | Digit:'+d+' | '+digits.length+'/100';
       
       // RISK FILTER LOGIC
-      let box=document.getElementById('sigbox');
-      if(digits.length<30){
-        document.getElementById('sig').textContent='COLLECTING '+digits.length+'/30';
-        document.getElementById('sig_info').textContent='Need more ticks';
-        box.style.borderColor='#333'; document.getElementById('status').textContent='WAIT';
-      } else if(min<=2 && max>=14){
+            let box=document.getElementById('sigbox');
+      if(digits.length<10){
+        document.getElementById('sig').textContent='COLLECTING '+digits.length+'/10';
+        document.getElementById('sig_info').textContent='Wait...';
+      } else {
+        document.getElementById('sig').innerHTML='TRADE <span style=color:#00ff88>'+cold+'</span>';
+        document.getElementById('sig_info').textContent='Coldest: '+cold+' appeared '+min+'x in last '+digits.length;
+        box.style.borderColor='#00ff88';
+        document.getElementById('status').innerHTML='<span style=color:#00ff88>TRADE NOW</span>';
+  }
         // VERY COLD - GOOD TO TRADE
         document.getElementById('sig').innerHTML='<span style=color:#00ff88>✓ TRADE '+cold+'</span>';
         document.getElementById('sig_info').textContent='Cold: '+cold+' only '+min+'x in 100 - Due for MATCHES';
