@@ -1,105 +1,91 @@
-
 <!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>derivscanner.ke - V75 Pro</title>
+<html><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>derivscanner.ke - MATCHES FILTER</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{background:#000;color:#fff;font-family:Arial;padding:10px}
 .box{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}
-.btn{background:#00ff88;color:#000;font-weight:bold;padding:14px;border:none;border-radius:10px;width:100%;font-size:16px}
-input{width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#1a1a1a;color:#fff;margin:5px 0}
-.live{color:#00ff88;font-size:12px;float:right}
+.btn{background:#00ff88;color:#000;font-weight:700;padding:14px;border:none;border-radius:10px;width:100%}
+select{width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#1a1a1a;color:#fff}
+.live{color:#00ff88;font-size:11px;float:right}
 </style>
-</head>
-<body>
+</head><body>
 
 <div class="box" style="text-align:center;border-color:#00ff88">
 <h1 style="color:#00ff88">derivscanner.ke</h1>
-<p style="color:#888;font-size:13px">V75 COLD ANALYZER - Weekly 5000 KES</p>
-<input id="code" placeholder="Enter code: 1234 for test">
-<button class="btn" onclick="unlock()">UNLOCK ACCESS</button>
+<p style="color:#888;font-size:11px">MATCHES + RISK FILTER</p>
+<select id="market"><option value="R_75">V75</option><option value="R_50">V50</option><option value="R_100">V100</option></select>
+<button class="btn" style="margin-top:10px" onclick="start()">START</button>
 </div>
 
-<div id="app" style="display:none">
-<div class="box">
-<span style="color:#00ff88;font-weight:bold">derivscanner.ke</span>
-<span id="status" class="live">● CONNECTING...</span>
-<div id="price" style="margin-top:8px">Loading R_75...</div>
-</div>
+<div class="box"><b>LIVE</b><span id="st" class="live">● READY</span><div id="pr" style="margin-top:8px;color:#aaa">Press START</div></div>
 
-<div class="box" style="text-align:center;border:2px solid #00ff88">
-<div id="signal" style="font-size:32px;font-weight:bold">WAIT 100 TICKS</div>
-<div id="info" style="color:#aaa;font-size:12px;margin-top:5px"></div>
+<div class="box" style="text-align:center;border:2px solid #333" id="sigbox">
+<div id="sig" style="font-size:28px;font-weight:bold">WAITING</div>
+<small id="sig_info" style="color:#888">Collecting...</small>
 </div>
 
 <div class="box">
-<div style="color:#888;font-size:11px">DIGIT FREQUENCY (Last 100 ticks)</div>
-<div id="bars" style="margin-top:10px;font-family:monospace;font-size:13px"></div>
-<div id="coldhot" style="margin-top:10px;display:flex;gap:8px">
-<div style="flex:1;background:#002a11;padding:8px;border-radius:8px;text-align:center"><small>COLDEST</small><div id="cold" style="color:#00ff88;font-weight:bold;font-size:16px">-</div></div>
-<div style="flex:1;background:#2a0000;padding:8px;border-radius:8px;text-align:center"><small>HOTTEST</small><div id="hot" style="color:#ff4444;font-weight:bold;font-size:16px">-</div></div>
+<div id="bars"></div>
+<div style="display:flex;gap:8px;margin-top:10px">
+<div style="flex:1;background:#002a11;padding:10px;border-radius:10px;text-align:center"><small>COLDEST</small><div id="cold" style="font-size:22px;font-weight:bold;color:#00ff88">-</div></div>
+<div style="flex:1;background:#222;padding:10px;border-radius:10px;text-align:center"><small>STATUS</small><div id="status" style="font-size:14px;font-weight:bold">-</div></div>
 </div>
-</div>
-
-<div class="box">
-<small style="color:#666">LAST 80 TICKS</small>
-<div id="dots" style="margin-top:8px;word-break:break-all;line-height:28px"></div>
-</div>
+<div id="dots" style="margin-top:10px;line-height:30px"></div>
 </div>
 
 <script>
-let digits=[];
-let ws=null;
+let digits=[], ws, market='R_75';
 
-function unlock(){
-let c=document.getElementById('code').value;
-if(c.length<2){alert('Enter 1234 for test');return;}
-document.getElementById('app').style.display='block';
-connect();
+function start(){
+  market=document.getElementById('market').value;
+  document.getElementById('st').textContent='● LIVE - '+market;
+  connect();
 }
 
 function connect(){
-if(ws) try{ws.close()}catch(e){}
-ws=new WebSocket('wss://ws.binaryws.com/websockets/v3?app_id=1089');
-ws.onopen=()=>{
-document.getElementById('status').textContent='● LIVE First Server';
-ws.send(JSON.stringify({ticks:'R_75',subscribe:1}));
-};
-ws.onmessage=(e)=>{
-let m=JSON.parse(e.data);
-if(!m.tick) return;
-let q=m.tick.quote;
-let last=String(q).slice(-1);
-let d=parseInt(last);
-if(isNaN(d)) return;
-digits.push(d);
-if(digits.length>100) digits.shift();
+  try{if(ws)ws.close()}catch(e){}
+  ws=new WebSocket('wss://ws.derivws.com/websockets/v3?app_id=1089');
+  ws.onopen=()=>ws.send(JSON.stringify({ticks:market,subscribe:1}));
+  ws.onmessage=e=>{
+    let m=JSON.parse(e.data);
+    if(m.msg_type=='tick' && m.tick){
+      let d=parseInt(String(m.tick.quote).slice(-1)); if(isNaN(d))return;
+      digits.push(d); if(digits.length>100)digits.shift();
+      let cnt=[0,0,0,0,0,0,0,0,0,0]; digits.forEach(v=>cnt[v]++);
+      let min=Math.min(...cnt), max=Math.max(...cnt), cold=cnt.indexOf(min);
+      
+      document.getElementById('pr').innerHTML=market+': <b style=color:#00ff88>'+m.tick.quote+'</b> | Digit:'+d+' | '+digits.length+'/100';
+      
+      // RISK FILTER LOGIC
+      let box=document.getElementById('sigbox');
+      if(digits.length<30){
+        document.getElementById('sig').textContent='COLLECTING '+digits.length+'/30';
+        document.getElementById('sig_info').textContent='Need more ticks';
+        box.style.borderColor='#333'; document.getElementById('status').textContent='WAIT';
+      } else if(min<=2 && max>=14){
+        // VERY COLD - GOOD TO TRADE
+        document.getElementById('sig').innerHTML='<span style=color:#00ff88>✓ TRADE '+cold+'</span>';
+        document.getElementById('sig_info').textContent='Cold: '+cold+' only '+min+'x in 100 - Due for MATCHES';
+        box.style.borderColor='#00ff88'; document.getElementById('status').innerHTML='<span style=color:#00ff88>STRONG</span>';
+      } else if(min<=4){
+        document.getElementById('sig').innerHTML='WATCH <span style=color:#ffcc00>'+cold+'</span>';
+        document.getElementById('sig_info').textContent='Getting cold - '+min+'x in 100';
+        box.style.borderColor='#ffcc00'; document.getElementById('status').innerHTML='<span style=color:#ffcc00>WEAK</span>';
+      } else {
+        document.getElementById('sig').textContent='WAIT';
+        document.getElementById('sig_info').textContent='All digits balanced ('+min+'-'+max+') - No trade';
+        box.style.borderColor='#ff4444'; document.getElementById('status').innerHTML='<span style=color:#ff4444>NO TRADE</span>';
+      }
 
-// FIXED: 10 ZEROS - NO BUG!
-let cnt=[0,0,0,0,0,0,0,0,0,0];
-digits.forEach(v=>{if(v>=0&&v<=9) cnt[v]++;});
-
-let min=Math.min(...cnt);
-let max=Math.max(...cnt);
-let cold=cnt.indexOf(min);
-let hot=cnt.indexOf(max);
-
-document.getElementById('price').innerHTML='R_75: <b style=color:#00ff88>'+q+'</b> | Digit: '+d+' | '+digits.length+'/100';
-document.getElementById('signal').textContent=min<=2?'🔥 BUY '+cold+' COLD':'WAIT Min '+min;
-document.getElementById('info').textContent='Cold '+cold+' ('+min+'x) | Hot '+hot+' ('+max+'x) | Conf '+(10-min)*12+'%';
-document.getElementById('bars').innerHTML=cnt.map((v,i)=>`<div style="display:flex;align-items:center;margin:3px 0"><span style="width:20px">${i}</span><div style="flex:1;background:#222;height:12px;border-radius:4px;overflow:hidden"><div style="width:${v/Math.max(...cnt,1)*100}%;height:100%;background:${v==min?'#00ff88':v==max?'#ff4444':'#444'}"></div></div><span style="width:30px;text-align:right;margin-left:8px">${v}</span></div>`).join('');
-document.getElementById('cold').textContent=cold+' ('+min+')';
-document.getElementById('hot').textContent=hot+' ('+max+')';
-document.getElementById('dots').innerHTML=digits.slice(-80).map(x=>`<span style="display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;margin:2px;font-size:11px;background:${x==cold?'#00ff88':x==hot?'#ff3333':'#222'};color:${x==cold?'#000':'#fff'}">${x}</span>`).join('');
-};
-ws.onclose=()=>{document.getElementById('status').textContent='● RECONNECTING...';setTimeout(connect,1000);};
-ws.onerror=()=>{try{ws.close()}catch(e){}};
+      document.getElementById('bars').innerHTML=cnt.map((v,i)=>`<div style=display:flex;align-items:center;margin:3px 0><span style=width:18px;color:${i==cold?'#00ff88':'#fff'}>${i}</span><div style=flex:1;background:#222;height:12px;border-radius:6px;overflow:hidden><div style=width:${v/Math.max(...cnt,1)*100}%;height:100%;background:${v==min?'#00ff88':'#555'}></div></div><span style=width:30px;text-align:right;margin-left:6px;font-size:12px>${v}</span></div>`).join('');
+      document.getElementById('cold').textContent=cold+' ('+min+')';
+      document.getElementById('dots').innerHTML=digits.slice(-60).map(x=>`<span style=display:inline-block;width:22px;height:22px;line-height:22px;text-align:center;border-radius:50%;margin:2px;font-size:11px;background:${x==cold?'#00ff88':'#222'};color:${x==cold?'#000':'#fff'}>${x}</span>`).join('');
+    }
+  };
+  ws.onclose=()=>setTimeout(connect,1000);
+  ws.onerror=()=>{try{ws.close()}catch(e){}; setTimeout(connect,1000)};
 }
 </script>
-</body>
-  </html>
-
-  
+<p style="text-align:center;color:#444;font-size:10px;margin:15px">Education only. Random markets are risky. Never trade without stop.</p>
+</body></html>
